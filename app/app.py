@@ -1,6 +1,5 @@
 from flask import Flask, render_template, request
 from recommender import generate_recommendations
-from model_loader import movie_titles
 import os
 
 app = Flask(__name__)
@@ -23,16 +22,22 @@ def home():
         else:
             error_message = "Please enter a User ID."
 
-    return render_template('index.html', recommendations=recommendations, movie_titles=movie_titles, error=error_message)
+    return render_template('index.html', recommendations=recommendations, error=error_message)
 
 @app.route('/metrics')
 def metrics():
-    from surprise import accuracy
-    from model_loader import model, data
+    from surprise import accuracy, Dataset, Reader
+    import pandas as pd
+    from model_loader import model
 
-    # Rebuild train/test to evaluate again (optional for display)
+    column_names = ['user_id', 'item_id', 'rating', 'timestamp']
+    ratings = pd.read_csv("../data/ml-100k/u.data", sep='\t', names=column_names)
+
+    reader = Reader(rating_scale=(1, 5))
+    data = Dataset.load_from_df(ratings[['user_id', 'item_id', 'rating']], reader)
     trainset = data.build_full_trainset()
     testset = trainset.build_testset()
+
     predictions = model.test(testset)
     rmse = accuracy.rmse(predictions, verbose=False)
 
